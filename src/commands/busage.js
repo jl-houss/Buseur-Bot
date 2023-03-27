@@ -359,7 +359,7 @@ module.exports = {
             const account = await db.prepare("SELECT username, password FROM accounts WHERE username = ?").get(username)
 
             const browser = await puppeteer.launch({ headless: isHeadless });
-            const page = await browser.newPage();
+            let page = await browser.newPage();
 
             page.setDefaultNavigationTimeout(0);
             await page.setViewport({ width: 1200, height: 750 });
@@ -418,11 +418,14 @@ module.exports = {
                             await document.querySelector("#table-0 > tbody > tr:nth-child(1) > td:nth-child(8) > button").click()
                         })()
                     `)
-
                     await CEPage.close()
-                    await page.reload()
+                    await page.close()
+                    page = await browser.newPage()
+                    await page.goto(`https://gaia.equideow.com/elevage/chevaux/cheval?id=${buseId}`)
+                    console.log("did box");
                 }
 
+                console.log("starting sdb");
                 await page.evaluate(`
                     function sleep(time) {
                             return new Promise((resolve) => setTimeout(resolve, time));
@@ -505,6 +508,7 @@ module.exports = {
                         }
                     })()
                 `)
+                console.log("did sdb");
             }
             await browser.close()
         }
