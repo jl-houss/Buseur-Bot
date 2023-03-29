@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require("@discordjs/builders");
 const db = require('better-sqlite3')('./main.db');
 const { EmbedBuilder } = require('discord.js');
-const { update_cookie, get_buses } = require("../utils/functions");
+const { get_cookie, get_buses } = require("../utils/functions");
 
 const Green = 0x57F287
 const Red = 0xED4245
@@ -26,7 +26,7 @@ async function account_add(interaction) {
 
     await interaction.deferReply({ ephemeral: true })
 
-    if (!await update_cookie(username, password)) {
+    if (!await get_cookie(username, password)) {
         const embed = new EmbedBuilder()
             .setColor(Red)
             .setTitle("Nom d'utilisateur et/ou mot de passe incorrectes !");
@@ -98,7 +98,7 @@ async function account_edit(interaction) {
 
     if (new_username && new_password) {
 
-        if (await update_cookie(new_username, new_password)) {
+        if (await get_cookie(new_username, new_password)) {
             await db.prepare("UPDATE accounts SET username = ?, password = ? WHERE id = ?").run(new_username, new_password, account.id)
         } else {
             const embed = new EmbedBuilder()
@@ -110,7 +110,7 @@ async function account_edit(interaction) {
 
     } else if (new_username) {
 
-        if (await update_cookie(new_username, account.password)) {
+        if (await get_cookie(new_username, account.password)) {
             await db.prepare("UPDATE accounts SET username = ? WHERE id = ?").run(new_username, account.id)
         } else {
             const embed = new EmbedBuilder()
@@ -121,7 +121,7 @@ async function account_edit(interaction) {
         }
     } else if (new_password) {
 
-        if (await update_cookie(account.username, new_password)) {
+        if (await get_cookie(account.username, new_password)) {
             await db.prepare("UPDATE accounts SET password = ? WHERE id = ?").run(new_password, account.id)
         } else {
             const embed = new EmbedBuilder()
@@ -157,7 +157,7 @@ async function account_edit(interaction) {
 
 }
 
-async function account_delete(interaction) {
+async function account_remove(interaction) {
     const username = interaction.options.getString('username')
 
     let account = await db.prepare('SELECT * FROM accounts WHERE username = ?').get(username)
@@ -260,7 +260,7 @@ module.exports = {
         commands = {
             'add': account_add,
             'edit': account_edit,
-            'delete': account_delete,
+            'remove': account_remove,
             'list': account_list
         }
 

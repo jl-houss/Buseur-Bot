@@ -8,7 +8,7 @@ function sleep(time) {
     return new Promise(resolve => setTimeout(resolve, time))
 }
 
-async function update_cookie(username, password) {
+async function get_cookie(username, password) {
     return new Promise(async (resolve) => {
         const browser = await puppeteer.launch({ headless: isHeadless });
         const page = await browser.newPage();
@@ -71,7 +71,11 @@ async function get_buses(username, password, elevage_id) {
 
     await page.goto(`https://gaia.equideow.com/elevage/chevaux/?elevage=${elevage_id}`)
 
-    await sleep(1000);
+    await sleep(500);
+
+    await remove_ovnis(page)
+
+    await sleep(500)
 
     let busesIds = await page.evaluate(`
         function sleep(time) {
@@ -227,10 +231,20 @@ async function get_horse_infos(page, horseId) {
     `)
 }
 
+async function remove_ovnis(page) {
+    await page.evaluate(`
+        (async () => {
+            let ovni = document.getElementById("Ufo_0")
+            if (ovni) { ovni.click() }
+        })()
+    `)
+}
+
 module.exports = {
-    update_cookie,
+    get_cookie,
     sleep,
     get_horse_infos,
     get_horse_page,
-    get_buses
+    get_buses,
+    remove_ovnis
 }

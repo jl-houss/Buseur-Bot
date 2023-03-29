@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 const db = require('better-sqlite3')('./main.db');
 const { EmbedBuilder } = require('discord.js');
 const puppeteer = require("puppeteer");
-const { sleep, get_horse_infos, get_horse_page } = require("../utils/functions");
+const { sleep, get_horse_infos, get_horse_page, remove_ovnis } = require("../utils/functions");
 
 const Green = 0x57F287
 const Red = 0xED4245
@@ -132,7 +132,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor(Red)
                 .setTitle("Aucun compte a utiliser !")
-                .setDescription("Veuillez ajouter un compte en utilisant la commande </account add:1073667280858271785>.")
+                .setDescription("Veuillez ajouter un compte en utilisant la commande **\`/account add\`**.")
 
             await interaction.reply({ embeds: [embed], ephemeral: true })
             return
@@ -164,9 +164,13 @@ module.exports = {
             await page.type("#password", account.password);
             await page.click("#authentificationSubmit");
 
-            await sleep(2000);
+            await sleep(500);
 
             await page.goto(`https://gaia.equideow.com/elevage/fiche/?id=${horseId}`)
+
+            await sleep(500)
+
+            await remove_ovnis(page)
 
             let horseInfos = await get_horse_infos(page, horseId)
 
@@ -294,6 +298,8 @@ module.exports = {
 
                             await sleep(500)
 
+                            await remove_ovnis(competsPage)
+
                             let pageCompets = await get_horse_compets(competsPage, horseId)
 
                             console.log(pageCompets);
@@ -383,6 +389,13 @@ module.exports = {
 
             for (let buseId of toSDB[username]) {
                 await page.goto(`https://gaia.equideow.com/elevage/chevaux/cheval?id=${buseId}`)
+
+                await sleep(500)
+
+                await remove_ovnis(page)
+
+                await sleep(500)
+
                 let buseInfos = await get_horse_infos(page, buseId);
 
                 await db.prepare("UPDATE buses SET Endurance = ?, Vitesse = ?, Dressage = ?, Galop = ?, Trot = ?, Saut = ? WHERE buseId = ?").
@@ -403,7 +416,13 @@ module.exports = {
                     let CELink = await (await (await CE.$("a")).getProperty("href")).jsonValue()
 
                     await CEPage.goto(CELink)
+
+                    await sleep(500)
+
+                    await remove_ovnis(CEPage)
+
                     await sleep(800)
+
                     await CEPage.evaluate(`
                         function sleep(time) {
                             return new Promise((resolve) => setTimeout(resolve, time));
@@ -419,11 +438,15 @@ module.exports = {
                         })()
                     `)
                     await CEPage.close()
-                    await page.close()
-                    page = await browser.newPage()
-                    await page.goto(`https://gaia.equideow.com/elevage/chevaux/cheval?id=${buseId}`)
+                    await page.reload()
                     console.log("did box");
                 }
+
+                await sleep(500)
+
+                await remove_ovnis(page)
+
+                await sleep(500)
 
                 console.log("starting sdb");
                 await page.evaluate(`
@@ -432,7 +455,10 @@ module.exports = {
                     }
 
                     (async () => {
-                        await sleep(800)
+                        let ovni = document.getElementById("Ufo_0")
+                        
+                        if (ovni) {ovni.click()}
+
                         let age = parseInt(
                             document
                                 .getElementById("characteristics")
