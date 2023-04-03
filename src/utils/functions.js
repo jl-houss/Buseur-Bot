@@ -8,7 +8,7 @@ function sleep(time) {
     return new Promise(resolve => setTimeout(resolve, time))
 }
 
-async function get_cookie(username, password) {
+async function update_cookie(username, password) {
     return new Promise(async (resolve) => {
         const browser = await puppeteer.launch({ headless: isHeadless });
         const page = await browser.newPage();
@@ -71,11 +71,7 @@ async function get_buses(username, password, elevage_id) {
 
     await page.goto(`https://gaia.equideow.com/elevage/chevaux/?elevage=${elevage_id}`)
 
-    await sleep(500);
-
-    await remove_ovnis(page)
-
-    await sleep(500)
+    await sleep(1000);
 
     let busesIds = await page.evaluate(`
         function sleep(time) {
@@ -109,7 +105,7 @@ async function get_buses(username, password, elevage_id) {
 
     let old_buses = []
 
-    await db.prepare('SELECT buseId FROM buses WHERE elevageId = ?').all(elevage_id).forEach(item => old_buses.push(item.buseId));
+    db.prepare('SELECT buseId FROM buses WHERE elevageId = ?').all(elevage_id).forEach(item => old_buses.push(item.buseId));
 
     let to_add = []
 
@@ -133,18 +129,8 @@ async function get_buses(username, password, elevage_id) {
 
         let buseInfos = await get_horse_infos(page, buseId)
 
-        if (buseInfos === "dead") {
-            continue
-        }
-
-        if (buseInfos.age.includes("ans")) {
-            if (buseInfos.age.split(" ")[0] > 31) {
-                continue
-            }
-        }
-
-        if (buseInfos.stats.Sante > 2 && buseInfos.wins < 20) {
-            await db.prepare("INSERT INTO buses (elevageId, buseId, type, Endurance, Vitesse, Dressage, Galop, Trot, Saut) VALUES (?,?,?,?,?,?,?,?,?)").
+        if (buseInfos.stats.Sante && buseInfos.wins < 20) {
+            db.prepare("INSERT INTO buses (elevageId, buseId, type, endurance, vitesse, dressage, galop, trot, saut) VALUES (?,?,?,?,?,?,?,?,?)").
                 run(elevage_id,
                     buseInfos.id,
                     buseInfos.type,
@@ -178,10 +164,6 @@ async function get_horse_page(page, horseId) {
 async function get_horse_infos(page, horseId) {
     return await page.evaluate(`
         (async () => {
-            if (document.querySelector(".grid-cell.align-top.spacer-large-right > h1")) {
-                return "dead"
-            }
-
             var get_stat = (id) => {
                 let stat = document.querySelector(id).innerText;
                 return parseFloat(stat);
@@ -210,10 +192,10 @@ async function get_horse_infos(page, horseId) {
                 'id': ${horseId},
                 'name': document.querySelector(".horse-name > a").innerText,
                 'type': type,
-                'age': document.querySelectorAll("#characteristics-body-content > table > tbody > tr > td")[1].innerText.replace("Âge : ", ""),
                 'stats': {
                     'Energie': get_stat("#energie"),
                     'Sante': get_stat("#sante"),
+                    'Moral': get_stat("#moral"),
                     'Endurance': get_stat("#enduranceValeur"),
                     'Vitesse': get_stat("#vitesseValeur"),
                     'Dressage': get_stat("#dressageValeur"),
@@ -241,7 +223,7 @@ async function remove_ovnis(page) {
 }
 
 module.exports = {
-    get_cookie,
+    update_cookie,
     sleep,
     get_horse_infos,
     get_horse_page,
