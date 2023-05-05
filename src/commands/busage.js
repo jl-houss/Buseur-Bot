@@ -409,129 +409,131 @@ module.exports = {
 
                 console.log("updated " + buseId);
 
-                await sleep(500)
-
-                await remove_ovnis(page)
-
-                await sleep(100);
-
-                console.log("checking if dead");
-
-                let is_dead = await page.evaluate(` 
-                    (async () => {
-                        return document.querySelector(".grid-cell.align-top.spacer-large-right > h1")
-                    })()
-                `)
-
-                if (is_dead) {
-                    console.log("est mort");
-                    continue
-                }
-
                 const CE = await page.$("#cheval-inscription"); // Check si besoin CE
 
                 if (CE) {
-                    console.log("doing boxage");
-                    const CEPage = await browser.newPage()
-                    await CEPage.goto(`https://gaia.equideow.com/elevage/chevaux/centreInscription?id=${buseId}`)
+                    const CEPage = await browser.newPage();
+                    let CELink = await (await (await CE.$("a")).getProperty("href")).jsonValue()
+
+                    await CEPage.goto(CELink)
+
                     await sleep(500)
+
                     await remove_ovnis(CEPage)
-                    await sleep(100)
+
+                    await sleep(800)
+
                     await CEPage.evaluate(`
                         function sleep(time) {
                             return new Promise((resolve) => setTimeout(resolve, time));
                         }
 
                         (async () => {
-                            Array.from(await document.querySelectorAll("a")).find((el) => el.textContent.includes("60 jours")).click()
-                            await sleep(1000)
-                            await document.querySelector("#table-0 > tbody > tr:nth-child(1) > td:nth-child(11) > button").click()
+                            await document.getElementById("fourrageCheckbox").click(); // CE avec fourrage
+                            await document.getElementById("avoineCheckbox").click();
+                            await sleep(800)
+                            Array.from(await document.querySelectorAll("a")).find((el) => el.textContent.includes("3 jours")).click()
+                            await sleep(800)
+                            await document.querySelector("#table-0 > tbody > tr:nth-child(1) > td:nth-child(8) > button").click()
                         })()
                     `)
                     await CEPage.close()
                     await page.reload()
-                    await remove_ovnis(page)
-                    console.log("did boxage");
+                    console.log("did box");
                 }
 
-                await sleep(900)
-                console.log("doing sdb");
+                await sleep(500)
 
+                await remove_ovnis(page)
+
+                await sleep(500)
+
+                console.log("starting sdb");
                 await page.evaluate(`
                     function sleep(time) {
                             return new Promise((resolve) => setTimeout(resolve, time));
                     }
 
                     (async () => {
-                        await sleep(500)
-
-                        let msgPrblmPoids = document
-                            .querySelector("#care-tab-feed")
-                            .querySelector("#messageBoxInline");
-                        let tropMaigre = false;
-                        let tropGros = false;
-                        if (msgPrblmPoids) {
-                            tropMaigre = msgPrblmPoids.textContent.indexOf("maigre") !== -1;
-                            tropGros = msgPrblmPoids.textContent.indexOf("gros") !== -1;
-                        }
-
-                        document.getElementById("boutonCaresser").click();
-                        await sleep(600);
-                        document.getElementById("boutonBoire").click();
-                        await sleep(600);
-
-                        let nourrirBtn = document.getElementById("boutonNourrir")
-
-                        if (nourrirBtn && !tropGros) {
-                            document.getElementById("boutonNourrir").click();
-                            await sleep(1100);
-                            let qtteFourrageRequise = parseInt(
-                                document.querySelector(".section-fourrage-target").textContent
-                            );
-                            let qtteAvoineRequise = 0;
-                            let qtteAvoineDonnee = 1;
-                            let testAvoine = document.querySelector(".section-avoine-target");
-                            if (testAvoine !== null) {
-                                qtteAvoineRequise = parseInt(
-                                    document.querySelector(".section-avoine-target").textContent
-                                );
-                                qtteAvoineDonnee = parseInt(
-                                    document.querySelector(".section-avoine-quantity").textContent
-                                );
-                            }
-                            let qtteFourrageDonnee = parseInt(
-                                document.querySelector(".section-fourrage-quantity").textContent
-                            );
-
-                            if (tropMaigre) {
-                                qtteFourrageRequise = 20;
-                            }
-                            let fourrage = qtteFourrageRequise - qtteFourrageDonnee;
-                            let avoine = qtteAvoineRequise - qtteAvoineDonnee;
-                            if (fourrage > 0) {
-                                document
-                                    .querySelector("#haySlider ol")
-                                    .querySelectorAll(".alternative, .green")
-                                [fourrage].click();
-                            }
-                            if (avoine > 0) {
-                                document
-                                    .querySelector("#oatsSlider ol")
-                                    .querySelectorAll(".alternative, .green")
-                                [avoine].click();
-                            }
-                            await sleep(600);
-
-                            document.getElementById("feed-button").click();
-                        }
+                        let ovni = document.getElementById("Ufo_0")
                         
-                        await sleep(600)
-                        document.getElementById("boutonPanser").click();
-                        await sleep(600);
-                        document.getElementById("boutonCoucher").click();
+                        if (ovni) {ovni.click()}
+
+                        let age = parseInt(
+                            document
+                                .getElementById("characteristics")
+                                .querySelector(".align-right")
+                                .textContent.slice(6, 8)
+                        ); // Age cheval
+                        if (age < 32) {
+                            const CE = document.getElementById("cheval-inscription"); // Check si besoin CE
+
+                            if (CE) {
+                                CE.querySelector("a").click(); // Ouvrir l'inscription en CE
+                            }
+                            await sleep(800);
+                            let msgPrblmPoids = document
+                                .querySelector("#care-tab-feed")
+                                .querySelector("#messageBoxInline");
+                            let tropMaigre = false;
+                            let tropGros = false;
+                            if (msgPrblmPoids !== null) {
+                                tropMaigre = msgPrblmPoids.textContent.indexOf("maigre") !== -1;
+                                tropGros = msgPrblmPoids.textContent.indexOf("gros") !== -1;
+                            }
+                            if (!tropGros) {
+                                document.getElementById("boutonNourrir").click();
+                                await sleep(800);
+                                let qtteFourrageRequise = parseInt(
+                                    document.querySelector(".section-fourrage-target").textContent
+                                );
+                                let qtteAvoineRequise = 0;
+                                let qtteAvoineDonnee = 1;
+                                let testAvoine = document.querySelector(".section-avoine-target");
+                                if (testAvoine !== null) {
+                                    qtteAvoineRequise = parseInt(
+                                        document.querySelector(".section-avoine-target").textContent
+                                    );
+                                    qtteAvoineDonnee = parseInt(
+                                        document.querySelector(".section-avoine-quantity").textContent
+                                    );
+                                }
+                                let qtteFourrageDonnee = parseInt(
+                                    document.querySelector(".section-fourrage-quantity").textContent
+                                );
+
+                                if (tropMaigre) {
+                                    qtteFourrageRequise = 20;
+                                }
+                                let fourrage = qtteFourrageRequise - qtteFourrageDonnee;
+                                let avoine = qtteAvoineRequise - qtteAvoineDonnee;
+                                if (fourrage > 0) {
+                                    document
+                                        .querySelector("#haySlider ol")
+                                        .querySelectorAll(".alternative, .green")
+                                    [fourrage].click();
+                                }
+                                if (avoine > 0) {
+                                    document
+                                        .querySelector("#oatsSlider ol")
+                                        .querySelectorAll(".alternative, .green")
+                                    [avoine].click();
+                                }
+                                await sleep(200);
+                                document.getElementById("feed-button").click();
+                                await sleep(200);
+                                document.getElementById("boutonCaresser").click();
+                                await sleep(200);
+                                document.getElementById("boutonBoire").click();
+                                await sleep(200);
+                                document.getElementById("boutonPanser").click();
+                                await sleep(200);
+                                document.getElementById("boutonCoucher").click();
+                                await sleep(200);
+                            }
+                        }
                     })()
                 `)
-                await sleep(1200)
                 console.log("did sdb");
             }
             await browser.close()
